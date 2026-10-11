@@ -33,10 +33,9 @@ A photo can replace the "MG" circle in `src/components/About.jsx`.
 ```bash
 cd website
 npm install
-npm run dev                                         # site only, no chat box
-npm run lint                                        # check the code
-npm run build                                       # production files in dist/
-VITE_CHAT_SERVER=http://localhost:8000 npm run dev  # with the chat box (start the server first, see ../README.md)
+npm run dev     # chat box loads from http://localhost:8000: start ../server first (see ../HUONG-DAN.md)
+npm run lint    # check the code
+npm run build   # production files in dist/ (set VITE_CHAT_SERVER to the deployed chat server)
 ```
 
 ## Publish online

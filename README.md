@@ -1,5 +1,7 @@
 # Real-estate advice chat box
 
+> Hướng dẫn chạy website Megan Goh cùng chat box (tiếng Việt): [HUONG-DAN.md](HUONG-DAN.md)
+
 An AI chat box (powered by Claude) that gives real-estate advice and **can be embedded in any personal website with a single `<script>` tag**.
 
 - Searches listings by criteria (area, price, bedrooms, legal status...) and shows them as cards.
