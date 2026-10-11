@@ -148,7 +148,7 @@ def other_website(tmp_path, server):
     (tmp_path / "index.html").write_text(f"""<!doctype html><html><head><meta charset="utf-8">
 <style>* {{ color: red !important; font-size: 40px !important; }} button {{ display:none !important }}</style>
 </head><body><h1>Another website</h1>
-<script src="{server}/widget.js" data-title="Chat test" data-color="#ff6600" data-position="left" defer></script>
+<script src="{server}/widget.js" data-title="Chat test" data-color="#ff6600" data-position="left" data-lang="en" defer></script>
 <script src="{server}/widget.js" defer></script>
 </body></html>""", encoding="utf-8")
     port = free_port()
@@ -168,6 +168,7 @@ def test_embedded_in_other_website(browser, other_website):
     assert button.bounding_box()["x"] < 100  # data-position="left"
     button.click()
     expect(inside(pg, ".hd .t")).to_have_text("Chat test")
+    expect(inside(pg, "textarea")).to_have_attribute("placeholder", "Type your question...")  # data-lang="en"
     assert inside(pg, ".hd").evaluate("e => getComputedStyle(e).backgroundColor") == "rgb(255, 102, 0)"
     assert inside(pg, ".m.a").first.evaluate("e => getComputedStyle(e).fontSize") == "14px"
     ask(pg, "Mua nhà phải đóng thuế phí gì?")  # cross-origin API call (CORS)
