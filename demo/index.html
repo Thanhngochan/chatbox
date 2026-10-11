@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Website cá nhân (demo)</title>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; color: #1f2937; background: #f8fafc; }
+    header { background: #0f766e; color: #fff; padding: 48px 16px; text-align: center; }
+    main { max-width: 720px; margin: 0 auto; padding: 32px 16px; line-height: 1.6; }
+    code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; }
+    button { background: #0f766e; color: #fff; border: 0; padding: 10px 16px; border-radius: 8px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Nguyễn Văn A — Môi giới bất động sản</h1>
+    <p>Đây là trang demo: một website cá nhân bất kỳ có nhúng chat box.</p>
+  </header>
+  <main>
+    <p>Bấm vào biểu tượng chat ở góc phải bên dưới để hỏi, hoặc mở chat từ nút của chính website:</p>
+    <p><button onclick="PropertyChat.ask('Có căn nào dưới 2 tỷ không?')">Tìm căn dưới 2 tỷ</button></p>
+    <p>Chat box được nhúng chỉ bằng một dòng:</p>
+    <p><code>&lt;script src="http://localhost:8000/widget.js" defer&gt;&lt;/script&gt;</code></p>
+  </main>
+
+  <!-- Nhúng chat box -->
+  <script src="/widget.js"
+          data-title="Tư vấn nhà đất"
+          data-subtitle="Trợ lý AI · trả lời 24/7"
+          data-color="#0f766e"
+          data-contact="tel:0900000000"
+          data-contact-label="Gọi 0900 000 000"
+          defer></script>
+</body>
+</html>
