@@ -1,99 +1,129 @@
-# Chat box tư vấn bất động sản
+# Real-estate advice chat box
 
-Chat box AI (dùng Claude) để tư vấn bất động sản, **nhúng được vào bất kỳ website cá nhân nào chỉ bằng một dòng `<script>`**.
+An AI chat box (powered by Claude) that gives real-estate advice and **can be embedded in any personal website with a single `<script>` tag**.
 
-- Tìm tin đăng theo điều kiện (khu vực, giá, số phòng ngủ, pháp lý...) và hiện dạng thẻ.
-- Trả lời về dự án và thủ tục mua nhà dựa trên tài liệu của bạn (`du_an.md`, `hoi_dap_mua_nha.md`).
-- Chữ hiện dần (streaming), giao diện tự co giãn trên điện thoại, CSS không ảnh hưởng website chủ.
+- Searches listings by criteria (area, price, bedrooms, legal status...) and shows them as cards.
+- Answers questions about projects and the home-buying process with **RAG**: for every question, the most relevant chunks of your documents (`projects.md`, `buying_faq.md`, the `docs/` folder) are retrieved and given to Claude, so it does not make things up.
+- Understands Vietnamese typed without accents and common abbreviations ("thu tuc sang ten", "q7", "thu duc").
+- Streams the answer as it is written, adapts to phone screens, and its CSS never touches the host website.
+
+The code, comments and docs are in English. The sample data and the texts shown to visitors are in Vietnamese, because the target customers are Vietnamese; Claude answers in the customer's language.
 
 ```
-server/      Backend FastAPI: gọi Claude, giữ API key bí mật
-widget/      property-chat.js — file JS nhúng vào website
-demo/        Trang web mẫu đã nhúng chat box
-du_an.md, hoi_dap_mua_nha.md, tin_dang.csv   Dữ liệu (thay bằng dữ liệu thật của bạn)
-rag_chatbot.ipynb                            Notebook học tập RAG (giữ nguyên)
+server/            FastAPI backend: calls Claude and keeps the API key secret
+  app.py           API, system prompt, tools
+  knowledge.py     RAG: chunking and BM25 search
+  listings.py      Loading and filtering listings
+widget/            property-chat.js, the script embedded in websites
+demo/              Sample website with the chat box embedded
+projects.md, buying_faq.md, listings.csv   Data (replace with your real data)
+docs/              Drop extra .md/.txt files here and the chat box searches them
+tests/             Automated tests (use a fake Claude, no API cost)
+rag_chatbot.ipynb  RAG learning notebook (embeddings + Chroma)
 ```
 
-## Chạy thử trên máy
+## Run it locally
 
 ```bash
 cd server
 pip install -r requirements.txt
-cp .env.example .env        # rồi dán ANTHROPIC_API_KEY vào file .env
+cp .env.example .env        # then paste your ANTHROPIC_API_KEY into .env
 uvicorn app:app --env-file .env --reload --port 8000
 ```
 
-Mở <http://localhost:8000> để xem trang demo có chat box.
+Open <http://localhost:8000> to see the demo page with the chat box.
 
-## Nhúng vào website cá nhân
+## Embed it in your website
 
-Sau khi đưa server lên mạng (xem phần Triển khai), dán đoạn sau vào trước thẻ `</body>` của website:
+Once the server is online (see Deployment), paste this before the `</body>` tag of your website:
 
 ```html
-<script src="https://chat.ten-mien-cua-ban.com/widget.js"
+<script src="https://chat.your-domain.com/widget.js"
         data-title="Tư vấn nhà đất"
         data-color="#0f766e"
         data-contact="tel:0900000000"
         defer></script>
 ```
 
-Dùng được với HTML thuần, WordPress (plugin chèn code header/footer), Wix/Webflow (custom code), Next.js/React (`<Script>`)...
+Works with plain HTML, WordPress (any header/footer code plugin), Wix/Webflow (custom code), Next.js/React (`<Script>`)...
 
-### Tuỳ chọn
+### Options
 
-| Thuộc tính | Ý nghĩa | Mặc định |
+| Attribute | Meaning | Default |
 |---|---|---|
-| `data-api` | Địa chỉ server nếu khác nơi chứa `widget.js` | lấy theo `src` |
-| `data-title` / `data-subtitle` | Tiêu đề, dòng phụ | "Tư vấn bất động sản" |
-| `data-color` | Màu chủ đạo | `#0f766e` |
-| `data-position` | `right` hoặc `left` | `right` |
-| `data-greeting` | Lời chào đầu tiên | có sẵn |
-| `data-suggestions` | Câu hỏi gợi ý, cách nhau bằng `\|` | 3 câu mẫu |
-| `data-contact` / `data-contact-label` | Link liên hệ (`tel:`, Zalo, Messenger) | ẩn |
-| `data-open` | `true` để mở sẵn khi tải trang | `false` |
+| `data-api` | Server address, if different from where `widget.js` is served | taken from `src` |
+| `data-title` / `data-subtitle` | Title and subtitle | "Tư vấn bất động sản" |
+| `data-color` | Main color | `#0f766e` |
+| `data-position` | `right` or `left` | `right` |
+| `data-greeting` | First greeting message | built in |
+| `data-suggestions` | Suggested questions, separated by `\|` | 3 samples |
+| `data-contact` / `data-contact-label` | Contact link (`tel:`, Zalo, Messenger) | hidden |
+| `data-open` | `true` to open the chat on page load | `false` |
 
-### Điều khiển từ website
+The other interface texts are in the `TEXT` object at the top of `widget/property-chat.js`.
+
+### Control it from your website
 
 ```js
 PropertyChat.open();
 PropertyChat.close();
-PropertyChat.ask("Có căn nào dưới 2 tỷ không?"); // mở và hỏi luôn
+PropertyChat.ask("Có căn nào dưới 2 tỷ không?"); // open and ask right away
 ```
 
-Ví dụ nút "Hỏi về căn này" trên trang tin đăng: `onclick="PropertyChat.ask('Cho mình xem chi tiết tin T003')"`.
+Example "Ask about this listing" button on a listing page: `onclick="PropertyChat.ask('Cho mình xem chi tiết tin T003')"`.
 
-## Thay dữ liệu thật
+## How the chat box answers (RAG)
 
-- `tin_dang.csv`: giữ nguyên tên cột, thêm/bớt dòng tuỳ ý. Chatbot tra bằng công cụ `tim_tin_dang` nên không bịa căn hay giá.
-- `du_an.md`, `hoi_dap_mua_nha.md`: viết tự do theo mục `##`. Hai file này được đưa thẳng vào system prompt (có prompt caching nên rẻ). Khi tài liệu lớn lên vài trăm trang, có thể chuyển sang tìm kiếm ngữ nghĩa như trong `rag_chatbot.ipynb`.
-- Khởi động lại server sau khi sửa dữ liệu.
+1. **Retrieval**: documents are split into chunks by `##` section (long sections are split further). For each question the server finds the most relevant chunks with BM25, matching Vietnamese without accents and favouring two-word phrases ("sổ hồng", "đặt cọc"). Short follow-ups ("còn phí quản lý thì sao?") are combined with the previous question so the right chunks are found.
+2. **Augmentation**: the retrieved chunks are attached to the question sent to Claude.
+3. **Generation**: Claude answers only from those chunks. If they are not enough, Claude calls the `search_documents` tool to search again with a different query; for listings it calls `search_listings` to filter exactly by price, area, bedrooms...
 
-## Cấu hình server (`server/.env`)
+The search is pure Python and needs no embedding model, so the server stays small and runs on free hosting tiers. Once the documents reach thousands of pages, you can switch to semantic search as in `rag_chatbot.ipynb` (only `server/knowledge.py` needs to change).
 
-| Biến | Ý nghĩa | Mặc định |
+## Use your real data
+
+- `listings.csv`: keep the column names, add or remove rows freely. Opening and saving it in Excel is fine; prices can be written `3.2` or `3,2`, and malformed rows are skipped with a warning. `type` is one of `apartment`, `townhouse`, `land`.
+- `projects.md`, `buying_faq.md`: free text organised in `##` sections, one topic per section.
+- Other documents: put `.md`/`.txt` files in the `docs/` folder (see `docs/README.md`).
+- Restart the server after changing the data. `GET /api/health` shows how many listings and document chunks were loaded.
+
+## Server settings (`server/.env`)
+
+| Variable | Meaning | Default |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | API key Claude (bắt buộc, chỉ để ở server) | — |
+| `ANTHROPIC_API_KEY` | Claude API key (required, server side only) | none |
 | `CLAUDE_MODEL` | Model | `claude-sonnet-5-5` |
-| `CLAUDE_EFFORT` | Mức suy nghĩ `low`/`medium`/`high` | `low` |
-| `ALLOWED_ORIGINS` | Website được phép nhúng, cách nhau bằng dấu phẩy | `*` |
-| `RATE_LIMIT_PER_MINUTE` | Số câu hỏi tối đa mỗi phút cho mỗi IP | `15` |
+| `CLAUDE_EFFORT` | Thinking effort `low`/`medium`/`high` | `low` |
+| `ALLOWED_ORIGINS` | Websites allowed to embed the chat box, comma separated | `*` |
+| `RATE_LIMIT_PER_MINUTE` | Maximum questions per minute per IP | `15` |
+| `RAG_CHUNKS` | Document chunks given to Claude per question | `4` |
 
-Khi chạy thật nên đặt `ALLOWED_ORIGINS` đúng tên miền của bạn để website khác không dùng ké API key.
-Server bật sẵn `fallbacks: "default"`: nếu bộ lọc an toàn từ chối nhầm, API tự trả lời bằng model dự phòng.
+In production, set `ALLOWED_ORIGINS` to your own domain so other websites cannot use your API key.
+The server enables `fallbacks: "default"`: if the safety filter refuses by mistake, the API answers with a fallback model.
 
-## Triển khai
+## Tests
 
-Có sẵn `Dockerfile`, chạy được trên Render, Railway, Fly.io, Google Cloud Run...
+```bash
+pip install -r requirements-dev.txt
+python -m playwright install chromium   # first time only
+python -m pytest tests
+```
+
+The tests run the real server against a fake Claude, so no API key is needed. They cover listing filters, document search (with and without accents), the API (Claude errors, lost connection, refusals, invalid tool parameters, rate limiting, CORS, missing API key) and the widget in Chromium (desktop, phone, embedded on another origin, HTML injection). GitHub Actions runs them on every pull request.
+
+## Deployment
+
+A `Dockerfile` is included; it runs on Render, Railway, Fly.io, Google Cloud Run...
 
 ```bash
 docker build -t property-chat .
 docker run -p 8000:8000 --env-file server/.env property-chat
 ```
 
-Trên các dịch vụ trên: trỏ tới repo, chọn build bằng Dockerfile, thêm biến môi trường `ANTHROPIC_API_KEY` và `ALLOWED_ORIGINS`. Server phải chạy HTTPS nếu website của bạn dùng HTTPS.
+On those services: point to the repo, choose the Dockerfile build, and add the `ANTHROPIC_API_KEY` and `ALLOWED_ORIGINS` environment variables. The server must use HTTPS if your website does.
 
 ## API
 
-`POST /api/chat` nhận `{"messages": [{"role": "user", "content": "..."}]}` (lịch sử hội thoại, tối đa 20 tin) và trả về Server-Sent Events:
-`text` (từng đoạn chữ), `listings` (danh sách tin đăng để vẽ thẻ), `error`, `done`.
-`GET /api/health` để kiểm tra server.
+`POST /api/chat` takes `{"messages": [{"role": "user", "content": "..."}]}` (the conversation history, up to 20 messages) and returns Server-Sent Events:
+`text` (pieces of the answer), `listings` (listings to draw as cards), `error`, `done`.
+`GET /api/health` checks the server.
