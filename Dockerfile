@@ -6,6 +6,7 @@ COPY server server
 COPY widget widget
 COPY demo demo
 COPY du_an.md hoi_dap_mua_nha.md tin_dang.csv ./
+COPY tai_lieu tai_lieu
 WORKDIR /app/server
 ENV DATA_DIR=/app
 EXPOSE 8000
