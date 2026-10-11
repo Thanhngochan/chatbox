@@ -1,5 +1,7 @@
 # Real-estate advice chat box
 
+> Hướng dẫn chạy website Megan Goh cùng chat box (tiếng Việt): [HUONG-DAN.md](HUONG-DAN.md)
+
 An AI chat box (powered by Claude) that gives real-estate advice and **can be embedded in any personal website with a single `<script>` tag**.
 
 - Searches listings by criteria (area, price, bedrooms, legal status...) and shows them as cards.
@@ -16,6 +18,7 @@ server/            FastAPI backend: calls Claude and keeps the API key secret
   listings.py      Loading and filtering listings
 widget/            property-chat.js, the script embedded in websites
 demo/              Sample website with the chat box embedded
+website/           Megan Goh's React website, with the chat box embedded (see website/README.md)
 projects.md, buying_faq.md, listings.csv   Data (replace with your real data)
 docs/              Drop extra .md/.txt files here and the chat box searches them
 tests/             Automated tests (use a fake Claude, no API cost)
@@ -59,6 +62,7 @@ Works with plain HTML, WordPress (any header/footer code plugin), Wix/Webflow (c
 | `data-suggestions` | Suggested questions, separated by `\|` | 3 samples |
 | `data-contact` / `data-contact-label` | Contact link (`tel:`, Zalo, Messenger) | hidden |
 | `data-open` | `true` to open the chat on page load | `false` |
+| `data-lang` | `en` for English interface texts | Vietnamese |
 
 The other interface texts are in the `TEXT` object at the top of `widget/property-chat.js`.
 

@@ -49,6 +49,26 @@
     million: " triệu",
     bedrooms: " PN",
   };
+  // data-lang="en" switches the interface texts to English
+  if (ds.lang === "en") {
+    TEXT = {
+      reset: "Reset",
+      resetTitle: "Start a new conversation",
+      close: "Close",
+      placeholder: "Type your question...",
+      inputLabel: "Question",
+      send: "Send",
+      disclaimer: "Information is for reference only",
+      openChat: "Open chat",
+      askAboutListing: "Ask about this listing",
+      listingDetails: "Show me the details of listing ",
+      httpError: "Something went wrong",
+      offline: "Could not reach the server, please try again.",
+      billion: " billion",
+      million: " million",
+      bedrooms: " bd",
+    };
+  }
 
   var KEY = "property-chat:" + cfg.api;
   var history = [];
