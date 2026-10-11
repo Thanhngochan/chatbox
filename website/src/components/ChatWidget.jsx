@@ -23,6 +23,8 @@ export default function ChatWidget() {
       s.dataset.contact = `https://wa.me/${wa}`;
       s.dataset.contactLabel = "WhatsApp Megan";
     }
+    s.onerror = () =>
+      console.error(`Chat box: could not load ${s.src}. Is the chat server running? (see HUONG-DAN.md)`);
     document.body.appendChild(s);
   }, []);
   return null;
