@@ -1,4 +1,4 @@
-name: Kiểm thử
+name: Tests
 
 on:
   push:

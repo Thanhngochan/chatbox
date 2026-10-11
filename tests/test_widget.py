@@ -1,4 +1,4 @@
-"""Kiểm tra widget chat trong trình duyệt thật (Chromium) với Claude giả lập."""
+"""Tests of the chat widget in a real browser (Chromium) against a fake Claude."""
 
 import http.server
 import os
@@ -8,181 +8,180 @@ from functools import partial
 import pytest
 
 sync_api = pytest.importorskip("playwright.sync_api")
+expect = sync_api.expect
 
-from conftest import _cong_trong  # noqa: E402
+from conftest import free_port, start_server  # noqa: E402
 
 
-def _tim_chromium():
-    for duong_dan in ("/opt/pw-browsers/chromium",):
-        if os.path.isfile(duong_dan):
-            return duong_dan
-    return None
+def _find_chromium():
+    for path in ("/opt/pw-browsers/chromium",):
+        if os.path.isfile(path):
+            return path
+    return None  # let Playwright use its own browser
 
 
 @pytest.fixture(scope="module")
-def trinh_duyet():
+def browser():
     with sync_api.sync_playwright() as p:
-        b = p.chromium.launch(executable_path=_tim_chromium())
+        b = p.chromium.launch(executable_path=_find_chromium())
         yield b
         b.close()
 
 
 @pytest.fixture
-def trang(trinh_duyet, server):
-    ctx = trinh_duyet.new_context()
-    page = ctx.new_page()
-    loi_js = []
-    page.on("pageerror", lambda e: loi_js.append(str(e)))
-    page.goto(server + "/")
-    yield page
-    assert loi_js == []
-    ctx.close()
+def page(browser, server):
+    context = browser.new_context()
+    pg = context.new_page()
+    js_errors = []
+    pg.on("pageerror", lambda e: js_errors.append(str(e)))
+    pg.goto(server + "/")
+    yield pg
+    assert js_errors == []
+    context.close()
 
 
-def goc(page, chon):
-    """Tìm phần tử bên trong Shadow DOM của widget."""
-    return page.locator("#property-chat").locator(chon)
+def inside(pg, selector):
+    """Find an element inside the widget's Shadow DOM."""
+    return pg.locator("#property-chat").locator(selector)
 
 
-def mo(page):
-    goc(page, ".btn").click()
-    sync_api.expect(goc(page, ".panel")).to_be_visible()
+def open_chat(pg):
+    inside(pg, ".btn").click()
+    expect(inside(pg, ".panel")).to_be_visible()
 
 
-def hoi(page, cau):
-    goc(page, "textarea").fill(cau)
-    goc(page, "textarea").press("Enter")
-    sync_api.expect(goc(page, ".ft button")).to_be_enabled(timeout=20000)
+def ask(pg, question):
+    inside(pg, "textarea").fill(question)
+    inside(pg, "textarea").press("Enter")
+    expect(inside(pg, ".ft button")).to_be_enabled(timeout=20000)
 
 
-def test_mo_dong_va_loi_chao(trang):
-    sync_api.expect(goc(trang, ".panel")).to_be_hidden()
-    mo(trang)
-    sync_api.expect(goc(trang, ".m.a").first).to_contain_text("Xin chào")
-    assert goc(trang, ".sug button").count() == 3
-    goc(trang, ".x").click()
-    sync_api.expect(goc(trang, ".panel")).to_be_hidden()
+def test_open_close_and_greeting(page):
+    expect(inside(page, ".panel")).to_be_hidden()
+    open_chat(page)
+    expect(inside(page, ".m.a").first).to_contain_text("Xin chào")
+    assert inside(page, ".sug button").count() == 3
+    inside(page, ".x").click()
+    expect(inside(page, ".panel")).to_be_hidden()
 
 
-def test_hoi_dap_rag_va_luu_lich_su(trang):
-    mo(trang)
-    hoi(trang, "Dự án nào gần metro?")
-    sync_api.expect(goc(trang, ".m.u")).to_have_text("Dự án nào gần metro?")
-    sync_api.expect(goc(trang, ".m.a").last).to_contain_text("An Lạc Garden")
-    assert goc(trang, ".sug").count() == 0
-    # tải lại trang: lịch sử còn nguyên trong phiên
-    trang.reload()
-    mo(trang)
-    sync_api.expect(goc(trang, ".m.a").last).to_contain_text("An Lạc Garden")
-    goc(trang, ".r").click()
-    assert goc(trang, ".m.u").count() == 0 and goc(trang, ".sug button").count() == 3
+def test_rag_answer_and_history_kept(page):
+    open_chat(page)
+    ask(page, "Dự án nào gần metro?")
+    expect(inside(page, ".m.u")).to_have_text("Dự án nào gần metro?")
+    expect(inside(page, ".m.a").last).to_contain_text("An Lạc Garden")
+    assert inside(page, ".sug").count() == 0
+    # after a reload the history is still there for this browser session
+    page.reload()
+    open_chat(page)
+    expect(inside(page, ".m.a").last).to_contain_text("An Lạc Garden")
+    inside(page, ".r").click()
+    assert inside(page, ".m.u").count() == 0 and inside(page, ".sug button").count() == 3
 
 
-def test_goi_y_tim_tin_hien_the_va_hoi_tiep_tu_the(trang):
-    mo(trang)
-    goc(trang, ".sug button").first.click()  # "Căn 2 phòng ngủ dưới 3 tỷ ở Quận 7"
-    sync_api.expect(goc(trang, ".card").first).to_be_visible(timeout=20000)
-    sync_api.expect(goc(trang, ".ft button")).to_be_enabled(timeout=20000)
-    so_the = goc(trang, ".card").count()
-    assert so_the >= 1
-    # câu trả lời nằm dưới các thẻ
-    assert trang.evaluate(
+def test_suggestion_shows_cards_and_card_asks_follow_up(page):
+    open_chat(page)
+    inside(page, ".sug button").first.click()  # "Căn 2 phòng ngủ dưới 3 tỷ ở Quận 7"
+    expect(inside(page, ".card").first).to_be_visible(timeout=20000)
+    expect(inside(page, ".ft button")).to_be_enabled(timeout=20000)
+    assert inside(page, ".card").count() >= 1
+    # the answer bubble sits below the cards
+    assert page.evaluate(
         "() => document.querySelector('#property-chat').shadowRoot.querySelector('.body').lastElementChild.className"
     ) == "m a"
-    ma = goc(trang, ".card .id").first.inner_text().split(" ")[0]
-    goc(trang, ".card button").first.click()
-    sync_api.expect(goc(trang, ".m.u").last).to_have_text(f"Cho mình xem chi tiết tin {ma}")
-    sync_api.expect(goc(trang, ".m.a").last).to_contain_text("1 căn phù hợp", timeout=20000)
+    listing_id = inside(page, ".card .id").first.inner_text().split(" ")[0]
+    inside(page, ".card button").first.click()
+    expect(inside(page, ".m.u").last).to_have_text(f"Cho mình xem chi tiết tin {listing_id}")
+    expect(inside(page, ".m.a").last).to_contain_text("1 căn phù hợp", timeout=20000)
 
 
-def test_nut_cua_website_goi_api_ask(trang):
-    trang.get_by_role("button", name="Tìm căn dưới 2 tỷ").click()
-    sync_api.expect(goc(trang, ".card .id")).to_contain_text("T005", timeout=20000)
+def test_host_page_button_calls_ask_api(page):
+    page.get_by_role("button", name="Tìm căn dưới 2 tỷ").click()
+    expect(inside(page, ".card .id")).to_contain_text("T005", timeout=20000)
 
 
-def test_loi_hien_thong_bao_va_gui_lai_duoc(trang):
-    mo(trang)
-    hoi(trang, "lỗi máy chủ")
-    sync_api.expect(goc(trang, ".m.err")).to_contain_text("Có lỗi")
-    hist = trang.evaluate("() => Object.values(sessionStorage).join('')")
-    assert "lỗi máy chủ" not in hist
-    hoi(trang, "xin chào")
-    sync_api.expect(goc(trang, ".m.a").last).to_contain_text("Đã đọc tài liệu")
+def test_error_is_shown_and_user_can_send_again(page):
+    open_chat(page)
+    ask(page, "server error")
+    expect(inside(page, ".m.err")).to_contain_text("Có lỗi")
+    stored = page.evaluate("() => Object.values(sessionStorage).join('')")
+    assert "server error" not in stored
+    ask(page, "xin chào")
+    expect(inside(page, ".m.a").last).to_contain_text("Documents read")
 
 
-def test_markdown_an_toan(trang):
-    mo(trang)
-    hoi(trang, "xss")
-    sync_api.expect(goc(trang, ".m.a b").last).to_have_text("Đậm")
-    assert goc(trang, ".m.a li").count() == 2
-    assert trang.evaluate("() => window.__xss") is None
-    assert goc(trang, ".m.a img").count() == 0
+def test_markdown_is_safe(page):
+    open_chat(page)
+    ask(page, "xss")
+    expect(inside(page, ".m.a b").last).to_have_text("Đậm")
+    assert inside(page, ".m.a li").count() == 2
+    assert page.evaluate("() => window.__xss") is None
+    assert inside(page, ".m.a img").count() == 0
 
 
-def test_khong_gui_cau_rong_va_shift_enter_xuong_dong(trang):
-    mo(trang)
-    goc(trang, "textarea").fill("   ")
-    goc(trang, "textarea").press("Enter")
-    assert goc(trang, ".m.u").count() == 0
-    goc(trang, "textarea").fill("dòng 1")
-    goc(trang, "textarea").press("Shift+Enter")
-    assert goc(trang, ".m.u").count() == 0
+def test_empty_question_not_sent_and_shift_enter_is_newline(page):
+    open_chat(page)
+    inside(page, "textarea").fill("   ")
+    inside(page, "textarea").press("Enter")
+    assert inside(page, ".m.u").count() == 0
+    inside(page, "textarea").fill("line 1")
+    inside(page, "textarea").press("Shift+Enter")
+    assert inside(page, ".m.u").count() == 0
 
 
-def test_dien_thoai_toan_man_hinh(trinh_duyet, server):
-    ctx = trinh_duyet.new_context(viewport={"width": 375, "height": 700}, is_mobile=True, has_touch=True)
-    page = ctx.new_page()
-    page.goto(server + "/")
-    goc(page, ".btn").tap()
-    hop = goc(page, ".panel").bounding_box()
-    assert hop["width"] == 375 and hop["height"] == 700
-    assert page.evaluate("() => document.documentElement.scrollWidth") <= 375
-    goc(page, ".x").tap()
-    sync_api.expect(goc(page, ".btn")).to_be_visible()
-    ctx.close()
+def test_phone_fullscreen(browser, server):
+    context = browser.new_context(viewport={"width": 375, "height": 700}, is_mobile=True, has_touch=True)
+    pg = context.new_page()
+    pg.goto(server + "/")
+    inside(pg, ".btn").tap()
+    box = inside(pg, ".panel").bounding_box()
+    assert box["width"] == 375 and box["height"] == 700
+    assert pg.evaluate("() => document.documentElement.scrollWidth") <= 375
+    inside(pg, ".x").tap()
+    expect(inside(pg, ".btn")).to_be_visible()
+    context.close()
 
 
 @pytest.fixture
-def website_khac(tmp_path, server):
-    """Một website ở tên miền (cổng) khác nhúng chat box, có CSS 'phá' để thử cô lập."""
+def other_website(tmp_path, server):
+    """A website on another origin (port) embedding the chat box, with hostile CSS to test isolation."""
     (tmp_path / "index.html").write_text(f"""<!doctype html><html><head><meta charset="utf-8">
 <style>* {{ color: red !important; font-size: 40px !important; }} button {{ display:none !important }}</style>
-</head><body><h1>Website khác</h1>
-<script src="{server}/widget.js" data-title="Chat thử" data-color="#ff6600" data-position="left" defer></script>
+</head><body><h1>Another website</h1>
+<script src="{server}/widget.js" data-title="Chat test" data-color="#ff6600" data-position="left" defer></script>
 <script src="{server}/widget.js" defer></script>
 </body></html>""", encoding="utf-8")
-    cong = _cong_trong()
-    srv = http.server.ThreadingHTTPServer(
-        ("127.0.0.1", cong), partial(http.server.SimpleHTTPRequestHandler, directory=str(tmp_path)))
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
-    yield f"http://127.0.0.1:{cong}/index.html"
-    srv.shutdown()
+    port = free_port()
+    httpd = http.server.ThreadingHTTPServer(
+        ("127.0.0.1", port), partial(http.server.SimpleHTTPRequestHandler, directory=str(tmp_path)))
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{port}/index.html"
+    httpd.shutdown()
 
 
-def test_nhung_vao_website_khac(trinh_duyet, website_khac):
-    page = trinh_duyet.new_page()
-    page.goto(website_khac)
-    assert page.locator("#property-chat").count() == 1  # nhúng 2 lần vẫn chỉ 1 widget
-    nut = goc(page, ".btn")
-    sync_api.expect(nut).to_be_visible()  # CSS của web chủ không ẩn được nút
-    assert nut.bounding_box()["x"] < 100  # data-position="left"
-    nut.click()
-    sync_api.expect(goc(page, ".hd .t")).to_have_text("Chat thử")
-    assert goc(page, ".hd").evaluate("e => getComputedStyle(e).backgroundColor") == "rgb(255, 102, 0)"
-    assert goc(page, ".m.a").first.evaluate("e => getComputedStyle(e).fontSize") == "14px"
-    hoi(page, "Mua nhà phải đóng thuế phí gì?")  # gọi API khác tên miền (CORS)
-    sync_api.expect(goc(page, ".m.a").last).to_contain_text("thuế phí")
-    page.close()
+def test_embedded_in_other_website(browser, other_website):
+    pg = browser.new_page()
+    pg.goto(other_website)
+    assert pg.locator("#property-chat").count() == 1  # embedded twice, still one widget
+    button = inside(pg, ".btn")
+    expect(button).to_be_visible()  # the host page's CSS cannot hide the button
+    assert button.bounding_box()["x"] < 100  # data-position="left"
+    button.click()
+    expect(inside(pg, ".hd .t")).to_have_text("Chat test")
+    assert inside(pg, ".hd").evaluate("e => getComputedStyle(e).backgroundColor") == "rgb(255, 102, 0)"
+    assert inside(pg, ".m.a").first.evaluate("e => getComputedStyle(e).fontSize") == "14px"
+    ask(pg, "Mua nhà phải đóng thuế phí gì?")  # cross-origin API call (CORS)
+    expect(inside(pg, ".m.a").last).to_contain_text("thuế phí")
+    pg.close()
 
 
-def test_may_chu_tat(trinh_duyet, tmp_path):
-    from conftest import chay_server
-    p, url = chay_server(None)
-    page = trinh_duyet.new_page()
-    page.goto(url + "/")
-    p.terminate()
-    p.wait()
-    mo(page)
-    hoi(page, "xin chào")
-    sync_api.expect(goc(page, ".m.err")).to_contain_text("Không kết nối được tới máy chủ")
-    page.close()
+def test_server_down(browser):
+    proc, url = start_server(None)
+    pg = browser.new_page()
+    pg.goto(url + "/")
+    proc.terminate()
+    proc.wait()
+    open_chat(pg)
+    ask(pg, "xin chào")
+    expect(inside(pg, ".m.err")).to_contain_text("Không kết nối được tới máy chủ")
+    pg.close()

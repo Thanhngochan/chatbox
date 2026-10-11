@@ -11,75 +11,76 @@ import pytest
 import uvicorn
 
 os.environ["NO_PROXY"] = os.environ["no_proxy"] = "127.0.0.1,localhost"
-GOC = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(GOC / "server"))
-sys.path.insert(0, str(GOC / "tests"))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "server"))
+sys.path.insert(0, str(ROOT / "tests"))
 
 import fake_anthropic  # noqa: E402
 
 
-def _cong_trong():
+def free_port():
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         return s.getsockname()[1]
 
 
-def _cho(url, giay=20):
-    het_han = time.time() + giay
-    while time.time() < het_han:
+def _wait_until_up(url, seconds=20):
+    deadline = time.time() + seconds
+    while time.time() < deadline:
         try:
             if httpx.get(url, timeout=1).status_code < 500:
                 return
         except httpx.HTTPError:
             pass
         time.sleep(0.1)
-    raise RuntimeError(f"Không khởi động được {url}")
+    raise RuntimeError(f"Could not start {url}")
 
 
 @pytest.fixture(scope="session")
-def claude_gia():
-    cong = _cong_trong()
-    server = uvicorn.Server(uvicorn.Config(fake_anthropic.app, port=cong, log_level="warning"))
+def fake_claude():
+    port = free_port()
+    server = uvicorn.Server(uvicorn.Config(fake_anthropic.app, port=port, log_level="warning"))
     threading.Thread(target=server.run, daemon=True).start()
-    url = f"http://127.0.0.1:{cong}"
-    _cho(url + "/docs")
+    url = f"http://127.0.0.1:{port}"
+    _wait_until_up(url + "/docs")
     yield url
     server.should_exit = True
 
 
-def chay_server(claude_url, **env_them):
-    cong = _cong_trong()
+def start_server(claude_url, **extra_env):
+    """Start the real chat server in a subprocess, pointed at `claude_url`."""
+    port = free_port()
     env = {k: v for k, v in os.environ.items() if not k.startswith(("ANTHROPIC_", "CLAUDE_"))}
     env.update({
         "ANTHROPIC_BASE_URL": claude_url or "http://127.0.0.1:9",
-        "ANTHROPIC_API_KEY": "sk-ant-gia",
+        "ANTHROPIC_API_KEY": "sk-ant-fake",
         "RATE_LIMIT_PER_MINUTE": "1000",
         "NO_PROXY": "127.0.0.1,localhost", "no_proxy": "127.0.0.1,localhost",
-        **env_them,
+        **extra_env,
     })
     if env.get("ANTHROPIC_API_KEY") == "":
         del env["ANTHROPIC_API_KEY"]
-    p = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "app:app", "--port", str(cong)],
-        cwd=GOC / "server", env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "app:app", "--port", str(port)],
+        cwd=ROOT / "server", env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
     )
-    url = f"http://127.0.0.1:{cong}"
+    url = f"http://127.0.0.1:{port}"
     try:
-        _cho(url + "/api/health")
+        _wait_until_up(url + "/api/health")
     except RuntimeError:
-        p.kill()
-        raise RuntimeError(p.stdout.read())
-    return p, url
+        proc.kill()
+        raise RuntimeError(proc.stdout.read())
+    return proc, url
 
 
 @pytest.fixture(scope="session")
-def server(claude_gia):
-    p, url = chay_server(claude_gia)
+def server(fake_claude):
+    proc, url = start_server(fake_claude)
     yield url
-    p.terminate()
+    proc.terminate()
 
 
 @pytest.fixture
-def yeu_cau_claude():
-    fake_anthropic.YEU_CAU.clear()
-    return fake_anthropic.YEU_CAU
+def claude_requests():
+    fake_anthropic.REQUESTS.clear()
+    return fake_anthropic.REQUESTS

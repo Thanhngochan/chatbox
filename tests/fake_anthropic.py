@@ -1,7 +1,7 @@
-"""Máy chủ giả lập Claude Messages API (stream SSE) để kiểm thử không cần API key thật.
+"""Fake Claude Messages API (SSE streaming) so tests run without a real API key.
 
-Phản hồi được chọn theo câu hỏi mới nhất của khách (xem `kich_ban`).
-Mọi request nhận được lưu trong `YEU_CAU` để test kiểm tra lại.
+The response is chosen from the customer's latest question (see `script`).
+Every request received is stored in `REQUESTS` so tests can inspect it.
 """
 
 import asyncio
@@ -12,98 +12,98 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 app = FastAPI()
-YEU_CAU = []
+REQUESTS = []
 
 
-def _sse(loai, du_lieu):
-    return f"event: {loai}\ndata: {json.dumps(du_lieu, ensure_ascii=False)}\n\n"
+def _sse(event, data):
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
-def _chu(khoi):
-    if isinstance(khoi, str):
-        return khoi
-    return "".join(b.get("text", "") for b in khoi if b.get("type") == "text")
+def _text(content):
+    if isinstance(content, str):
+        return content
+    return "".join(b.get("text", "") for b in content if b.get("type") == "text")
 
 
-def kich_ban(body):
-    """Trả về (danh sách khối nội dung, stop_reason) hoặc ('http', mã lỗi) hoặc ('dut', chữ)."""
-    cuoi = body["messages"][-1]
-    noi_dung = cuoi["content"]
-    ket_qua_cong_cu = [b for b in noi_dung if isinstance(b, dict) and b.get("type") == "tool_result"] \
-        if isinstance(noi_dung, list) else []
-    cau_dau = _chu(body["messages"][0]["content"])
+_tool_counter = 0
 
-    if ket_qua_cong_cu:
-        if "lặp mãi" in cau_dau:
-            return [_tool("tra_cuu_tai_lieu", {"cau_hoi": "lặp"})], "tool_use"
-        kq = ket_qua_cong_cu[0]
-        nd = kq["content"] if isinstance(kq["content"], str) else _chu(kq["content"])
-        if kq.get("is_error"):
+
+def _tool(name, params):
+    global _tool_counter
+    _tool_counter += 1
+    return {"type": "tool_use", "id": f"toolu_{_tool_counter:04d}", "name": name, "input": params}
+
+
+def script(body):
+    """Return (content blocks, stop_reason), or ('http', status code), or ('cut', partial text)."""
+    last = body["messages"][-1]
+    content = last["content"]
+    tool_results = [b for b in content if isinstance(b, dict) and b.get("type") == "tool_result"] \
+        if isinstance(content, list) else []
+    first_question = _text(body["messages"][0]["content"])
+
+    if tool_results:
+        if "loop forever" in first_question:
+            return [_tool("search_documents", {"query": "loop"})], "tool_use"
+        result = tool_results[0]
+        text = result["content"] if isinstance(result["content"], str) else _text(result["content"])
+        if result.get("is_error"):
             return [{"type": "text", "text": "Xin lỗi, mình gặp lỗi khi tìm, bạn nói rõ hơn nhé."}], "end_turn"
-        if nd.startswith("{"):
-            return [{"type": "text", "text": f"Mình tìm được **{json.loads(nd)['so_tin']}** căn phù hợp."}], "end_turn"
-        muc = re.findall(r'muc="([^"]*)"', nd)
-        return [{"type": "text", "text": "Theo tài liệu mục: " + "; ".join(muc)}], "end_turn"
+        if text.startswith("{"):
+            return [{"type": "text", "text": f"Mình tìm được **{json.loads(text)['count']}** căn phù hợp."}], "end_turn"
+        sections = re.findall(r'section="([^"]*)"', text)
+        return [{"type": "text", "text": "Sections found: " + "; ".join(sections)}], "end_turn"
 
-    hoi = _chu(noi_dung)
-    tham_khao = re.findall(r'muc="([^"]*)"', hoi)
-    cau = re.sub(r"<tai_lieu_tham_khao>.*</tai_lieu_tham_khao>", "", hoi, flags=re.S).strip()
+    question = _text(content)
+    reference_sections = re.findall(r'section="([^"]*)"', question)
+    question = re.sub(r"<reference_documents>.*</reference_documents>", "", question, flags=re.S).strip()
 
-    if "lỗi máy chủ" in cau:
+    if "server error" in question:
         return "http", 500
-    if "quá tải" in cau:
+    if "overloaded" in question:
         return "http", 429
-    if "đứt" in cau:
-        return "dut", "Đang trả lời dở"
-    if "từ chối" in cau:
+    if "cut off" in question:
+        return "cut", "Half an answer"
+    if "refuse" in question:
         return [], "refusal"
-    if "tham số sai" in cau:
-        return [_tool("tim_tin_dang", {"gia_toi_da_ty": "rẻ"})], "tool_use"
-    if "lặp mãi" in cau:
-        return [_tool("tra_cuu_tai_lieu", {"cau_hoi": "lặp"})], "tool_use"
-    if "tra cứu" in cau:
+    if "bad params" in question:
+        return [_tool("search_listings", {"max_price_billion": "cheap"})], "tool_use"
+    if "loop forever" in question:
+        return [_tool("search_documents", {"query": "loop"})], "tool_use"
+    if "look up" in question:
         return [{"type": "text", "text": "Để mình tra cứu."},
-                _tool("tra_cuu_tai_lieu", {"cau_hoi": cau.replace("tra cứu", "")})], "tool_use"
-    m = re.search(r"dưới (\d+(?:[.,]\d+)?) tỷ", cau)
+                _tool("search_documents", {"query": question.replace("look up", "")})], "tool_use"
+    m = re.search(r"dưới (\d+(?:[.,]\d+)?) tỷ", question)  # "under N billion"
     if m:
-        return [_tool("tim_tin_dang", {"gia_toi_da_ty": float(m.group(1).replace(",", "."))})], "tool_use"
-    m = re.search(r"tin (T\d+)", cau)
+        return [_tool("search_listings", {"max_price_billion": float(m.group(1).replace(",", "."))})], "tool_use"
+    m = re.search(r"tin (T\d+)", question)  # "listing T003"
     if m:
-        return [_tool("tim_tin_dang", {"ma_tin": m.group(1)})], "tool_use"
-    if "xss" in cau:
+        return [_tool("search_listings", {"listing_id": m.group(1)})], "tool_use"
+    if "xss" in question:
         return [{"type": "text", "text": "**Đậm** <img src=x onerror=\"window.__xss=1\">\n- ý một\n- ý hai"}], "end_turn"
-    chu = "Đã đọc tài liệu: " + ("; ".join(tham_khao) if tham_khao else "không có")
-    return [{"type": "text", "text": chu}], "end_turn"
+    text = "Documents read: " + ("; ".join(reference_sections) if reference_sections else "none")
+    return [{"type": "text", "text": text}], "end_turn"
 
 
-_dem = 0
-
-
-def _tool(ten, tham_so):
-    global _dem
-    _dem += 1
-    return {"type": "tool_use", "id": f"toolu_{_dem:04d}", "name": ten, "input": tham_so}
-
-
-async def _stream(khoi, stop_reason, dut=None):
+async def _stream(blocks, stop_reason, cut=None):
     yield _sse("message_start", {"type": "message_start", "message": {
-        "id": "msg_gia", "type": "message", "role": "assistant", "model": "gia", "content": [],
+        "id": "msg_fake", "type": "message", "role": "assistant", "model": "fake", "content": [],
         "stop_reason": None, "stop_sequence": None,
         "usage": {"input_tokens": 10, "output_tokens": 0}}})
-    if dut:
+    if cut:
         yield _sse("content_block_start", {"type": "content_block_start", "index": 0,
                                            "content_block": {"type": "text", "text": ""}})
         yield _sse("content_block_delta", {"type": "content_block_delta", "index": 0,
-                                           "delta": {"type": "text_delta", "text": dut}})
+                                           "delta": {"type": "text_delta", "text": cut}})
         await asyncio.sleep(0.05)
-        raise RuntimeError("cắt kết nối giữa chừng")
-    for i, b in enumerate(khoi):
+        raise RuntimeError("connection cut mid-stream")
+    for i, b in enumerate(blocks):
         if b["type"] == "text":
             yield _sse("content_block_start", {"type": "content_block_start", "index": i,
                                                "content_block": {"type": "text", "text": ""}})
-            for manh in re.findall(r".{1,8}", b["text"], flags=re.S):
+            for piece in re.findall(r".{1,8}", b["text"], flags=re.S):
                 yield _sse("content_block_delta", {"type": "content_block_delta", "index": i,
-                                                   "delta": {"type": "text_delta", "text": manh}})
+                                                   "delta": {"type": "text_delta", "text": piece}})
                 await asyncio.sleep(0.005)
         else:
             yield _sse("content_block_start", {"type": "content_block_start", "index": i, "content_block": {
@@ -120,12 +120,12 @@ async def _stream(khoi, stop_reason, dut=None):
 @app.post("/v1/messages")
 async def messages(request: Request):
     body = await request.json()
-    YEU_CAU.append({"headers": dict(request.headers), "body": body})
-    kq = kich_ban(body)
-    if kq[0] == "http":
-        loai = "rate_limit_error" if kq[1] == 429 else "api_error"
-        return JSONResponse({"type": "error", "error": {"type": loai, "message": "giả lập"}},
-                            status_code=kq[1], headers={"retry-after": "0"})
-    if kq[0] == "dut":
-        return StreamingResponse(_stream([], None, dut=kq[1]), media_type="text/event-stream")
-    return StreamingResponse(_stream(*kq), media_type="text/event-stream")
+    REQUESTS.append({"headers": dict(request.headers), "body": body})
+    result = script(body)
+    if result[0] == "http":
+        kind = "rate_limit_error" if result[1] == 429 else "api_error"
+        return JSONResponse({"type": "error", "error": {"type": kind, "message": "fake"}},
+                            status_code=result[1], headers={"retry-after": "0"})
+    if result[0] == "cut":
+        return StreamingResponse(_stream([], None, cut=result[1]), media_type="text/event-stream")
+    return StreamingResponse(_stream(*result), media_type="text/event-stream")

@@ -1,20 +1,21 @@
 /*!
- * Property Chat widget — chat box tư vấn bất động sản, nhúng vào bất kỳ website nào.
+ * Property Chat widget: a real-estate advice chat box that can be embedded in any website.
  *
- * Cách nhúng (dán trước thẻ </body>):
- *   <script src="https://DIA-CHI-SERVER/widget.js"
+ * To embed it (paste before the </body> tag):
+ *   <script src="https://YOUR-SERVER/widget.js"
  *           data-title="Tư vấn nhà đất"
  *           data-color="#0f766e"
  *           defer></script>
  *
- * Mọi tuỳ chọn data-* xem trong README.md.
+ * See README.md for every data-* option.
  */
 (function () {
   "use strict";
-  if (window.PropertyChat) return; // tránh nhúng 2 lần
+  if (window.PropertyChat) return; // avoid embedding twice
 
   var script = document.currentScript;
   var ds = (script && script.dataset) || {};
+  // Default texts are in Vietnamese because they are shown to the site's visitors
   var cfg = {
     api: (ds.api || (script ? new URL(script.src).origin : "")).replace(/\/$/, ""),
     title: ds.title || "Tư vấn bất động sản",
@@ -27,19 +28,36 @@
     suggestions: (ds.suggestions ||
       "Căn 2 phòng ngủ dưới 3 tỷ ở Quận 7|Dự án nào gần metro?|Mua nhà phải đóng thuế phí gì?")
       .split("|").filter(Boolean),
-    contact: ds.contact || "",          // ví dụ: tel:0900000000 hoặc https://zalo.me/0900000000
+    contact: ds.contact || "",          // e.g. tel:0900000000 or https://zalo.me/0900000000
     contactLabel: ds.contactLabel || "Gọi môi giới",
     open: ds.open === "true",
+  };
+  var TEXT = {
+    reset: "Làm mới",
+    resetTitle: "Bắt đầu cuộc trò chuyện mới",
+    close: "Đóng",
+    placeholder: "Nhập câu hỏi...",
+    inputLabel: "Câu hỏi",
+    send: "Gửi",
+    disclaimer: "Thông tin chỉ mang tính tham khảo",
+    openChat: "Mở chat tư vấn",
+    askAboutListing: "Hỏi thêm về căn này",
+    listingDetails: "Cho mình xem chi tiết tin ",
+    httpError: "Có lỗi xảy ra",
+    offline: "Không kết nối được tới máy chủ, vui lòng thử lại.",
+    billion: " tỷ",
+    million: " triệu",
+    bedrooms: " PN",
   };
 
   var KEY = "property-chat:" + cfg.api;
   var history = [];
   try { history = JSON.parse(sessionStorage.getItem(KEY) || "[]"); } catch (e) { history = []; }
   function save() {
-    try { sessionStorage.setItem(KEY, JSON.stringify(history.slice(-30))); } catch (e) { /* bỏ qua */ }
+    try { sessionStorage.setItem(KEY, JSON.stringify(history.slice(-30))); } catch (e) { /* ignore */ }
   }
 
-  // ---------- Giao diện (Shadow DOM để CSS không đụng website chủ) ----------
+  // ---------- UI (Shadow DOM so the host site's CSS cannot touch it, and vice versa) ----------
   var host = document.createElement("div");
   host.id = "property-chat";
   var root = host.attachShadow({ mode: "open" });
@@ -83,14 +101,14 @@
     "</style>" +
     '<div class="panel" role="dialog" aria-label="' + esc(cfg.title) + '">' +
     '<div class="hd"><div><div class="t">' + esc(cfg.title) + '</div><div class="s">' + esc(cfg.subtitle) + "</div></div>" +
-    '<button class="r" title="Bắt đầu cuộc trò chuyện mới">Làm mới</button>' +
-    '<button class="x" aria-label="Đóng">&times;</button></div>' +
+    '<button class="r" title="' + esc(TEXT.resetTitle) + '">' + esc(TEXT.reset) + "</button>" +
+    '<button class="x" aria-label="' + esc(TEXT.close) + '">&times;</button></div>' +
     '<div class="body"></div>' +
-    '<form class="ft"><textarea rows="1" placeholder="Nhập câu hỏi..." aria-label="Câu hỏi"></textarea><button type="submit">Gửi</button></form>' +
-    '<div class="note">Thông tin chỉ mang tính tham khảo' +
+    '<form class="ft"><textarea rows="1" placeholder="' + esc(TEXT.placeholder) + '" aria-label="' + esc(TEXT.inputLabel) + '"></textarea><button type="submit">' + esc(TEXT.send) + "</button></form>" +
+    '<div class="note">' + esc(TEXT.disclaimer) +
     (cfg.contact ? ' · <a href="' + esc(cfg.contact) + '" target="_blank" rel="noopener">' + esc(cfg.contactLabel) + "</a>" : "") +
     "</div></div>" +
-    '<button class="btn" aria-label="Mở chat tư vấn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>';
+    '<button class="btn" aria-label="' + esc(TEXT.openChat) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>';
 
   var panel = root.querySelector(".panel");
   var body = root.querySelector(".body");
@@ -105,7 +123,7 @@
     });
   }
 
-  // Markdown tối giản và an toàn: escape HTML trước rồi mới thêm thẻ
+  // Minimal, safe Markdown: escape HTML first, then add tags
   function md(text) {
     var out = [], list = false;
     esc(text).split("\n").forEach(function (line) {
@@ -134,8 +152,10 @@
     return d;
   }
 
-  function fmtGia(ty) {
-    return ty >= 1 ? String(ty).replace(".", ",") + " tỷ" : Math.round(ty * 1000) + " triệu";
+  function formatPrice(billions) {
+    return billions >= 1
+      ? String(billions).replace(".", ",") + TEXT.billion
+      : Math.round(billions * 1000) + TEXT.million;
   }
 
   function cards(items) {
@@ -145,15 +165,15 @@
       var c = document.createElement("div");
       c.className = "card";
       c.innerHTML =
-        '<div class="id">' + esc(t.id) + " · " + esc(t.ten_loai) + "</div>" +
-        '<div class="n">' + esc(t.tieu_de) + "</div>" +
-        '<div class="p">' + esc(fmtGia(t.gia_ty)) + "</div>" +
-        '<div class="meta">' + esc(t.dien_tich_m2) + " m² · " +
-        (t.phong_ngu ? esc(t.phong_ngu) + " PN · " : "") + esc(t.quan) + "</div>" +
-        '<div class="meta">' + esc(t.phap_ly) + "</div>" +
-        "<button>Hỏi thêm về căn này</button>";
+        '<div class="id">' + esc(t.id) + " · " + esc(t.type_label) + "</div>" +
+        '<div class="n">' + esc(t.title) + "</div>" +
+        '<div class="p">' + esc(formatPrice(t.price_billion_vnd)) + "</div>" +
+        '<div class="meta">' + esc(t.area_m2) + " m² · " +
+        (t.bedrooms ? esc(t.bedrooms) + esc(TEXT.bedrooms) + " · " : "") + esc(t.district) + "</div>" +
+        '<div class="meta">' + esc(t.legal_status) + "</div>" +
+        "<button>" + esc(TEXT.askAboutListing) + "</button>";
       c.querySelector("button").onclick = function () {
-        send("Cho mình xem chi tiết tin " + t.id);
+        send(TEXT.listingDetails + t.id);
       };
       wrap.appendChild(c);
     });
@@ -181,7 +201,7 @@
     if (!history.length) suggestions();
   }
 
-  // ---------- Gửi câu hỏi và đọc câu trả lời dạng stream (SSE) ----------
+  // ---------- Send a question and read the streamed answer (SSE) ----------
   function send(text) {
     text = (text || "").trim();
     if (!text || busy) return;
@@ -203,7 +223,7 @@
         if (!answer) out.remove();
         var e = bubble("assistant", errMsg);
         e.classList.add("err");
-        history.pop(); // bỏ câu hỏi lỗi để lần sau gửi lại không bị trùng
+        history.pop(); // drop the failed question so resending it does not duplicate it
       } else if (answer.trim()) {
         history.push({ role: "assistant", content: answer.trim() });
       }
@@ -221,7 +241,7 @@
       .then(function (res) {
         if (!res.ok) {
           return res.json().catch(function () { return {}; }).then(function (j) {
-            throw new Error(typeof j.detail === "string" ? j.detail : "Có lỗi xảy ra (" + res.status + ").");
+            throw new Error(typeof j.detail === "string" ? j.detail : TEXT.httpError + " (" + res.status + ").");
           });
         }
         var reader = res.body.getReader();
@@ -243,7 +263,7 @@
             scroll();
           } else if (ev === "listings") {
             cards(d.items);
-            // đưa bong bóng trả lời xuống dưới thẻ tin đăng
+            // move the answer bubble below the listing cards
             body.appendChild(out);
             scroll();
           } else if (ev === "error") {
@@ -270,11 +290,11 @@
       .catch(function (err) {
         finish(err && err.message && err.message.indexOf("Failed to fetch") === -1
           ? err.message
-          : "Không kết nối được tới máy chủ, vui lòng thử lại.");
+          : TEXT.offline);
       });
   }
 
-  // ---------- Sự kiện ----------
+  // ---------- Events ----------
   function toggle(on) {
     panel.classList.toggle("on", on);
     if (on) { scroll(); input.focus(); }
@@ -312,7 +332,7 @@
   }
   if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
 
-  // API cho website chủ: PropertyChat.open(), .close(), .ask("câu hỏi")
+  // API for the host website: PropertyChat.open(), .close(), .ask("question")
   window.PropertyChat = {
     open: function () { toggle(true); },
     close: function () { toggle(false); },
