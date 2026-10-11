@@ -1,0 +1,13 @@
+id,tieu_de,loai,quan,thanh_pho,gia_ty,dien_tich_m2,phong_ngu,phong_tam,phap_ly,du_an,ngay_dang,mo_ta
+T001,Căn hộ 2 phòng ngủ view sông tầng 15,can_ho,Quận 7,TP.HCM,3.2,72,2,2,Sổ hồng,Sông Xanh Residence,2026-09-12,"Căn góc, ban công hướng Đông Nam nhìn ra sông, nội thất cơ bản, cách trường quốc tế 500m."
+T002,Căn hộ 1 phòng ngủ giá tốt cho người độc thân,can_ho,Quận 7,TP.HCM,2.1,48,1,1,Sổ hồng,Sông Xanh Residence,2026-09-20,"Tầng 8, hướng Tây Bắc, đã có máy lạnh và bếp, đang cho thuê 11 triệu/tháng."
+T003,Căn hộ 3 phòng ngủ cho gia đình đông người,can_ho,Quận 7,TP.HCM,5.4,105,3,2,Sổ hồng,Sông Xanh Residence,2026-08-30,"Tầng 22, view toàn cảnh thành phố, full nội thất gỗ, 1 chỗ đậu ô tô."
+T004,Căn hộ 2 phòng ngủ gần khu công nghệ cao,can_ho,TP. Thủ Đức,TP.HCM,2.6,65,2,2,Hợp đồng mua bán,An Lạc Garden,2026-09-25,"Dự án bàn giao quý 2/2027, thanh toán theo tiến độ, tầng 10 hướng Nam."
+T005,Căn hộ studio đầu tư cho thuê,can_ho,TP. Thủ Đức,TP.HCM,1.5,35,1,1,Hợp đồng mua bán,An Lạc Garden,2026-10-01,"Diện tích nhỏ, phù hợp cho thuê sinh viên và kỹ sư, gần trạm metro 800m."
+T006,Căn hộ 3 phòng ngủ tầng cao,can_ho,TP. Thủ Đức,TP.HCM,4.1,92,3,2,Hợp đồng mua bán,An Lạc Garden,2026-09-05,"Tầng 18, ban công rộng, view công viên nội khu, chủ đầu tư hỗ trợ lãi suất 12 tháng."
+T007,Nhà phố 1 trệt 2 lầu hẻm xe hơi,nha_pho,Bình Thạnh,TP.HCM,8.5,60,4,3,Sổ hồng,,2026-09-18,"Hẻm 6m, cách mặt tiền 50m, nhà xây năm 2019, sân thượng, gần chợ và bệnh viện."
+T008,Nhà cấp 4 cần sửa giá mềm,nha_pho,Gò Vấp,TP.HCM,4.2,55,2,1,Sổ hồng,,2026-10-03,"Hẻm 3m, nhà cũ cần sửa chữa, phù hợp mua để xây mới, khu dân cư yên tĩnh."
+T009,Nhà phố mặt tiền kinh doanh,nha_pho,Quận 10,TP.HCM,18.0,80,5,4,Sổ hồng,,2026-08-22,"Mặt tiền đường 12m, đang cho thuê làm cửa hàng 60 triệu/tháng, 1 trệt 3 lầu."
+T010,Đất nền khu dân cư mới,dat_nen,Nhà Bè,TP.HCM,3.0,90,0,0,Sổ hồng riêng,,2026-09-10,"Lô góc 5x18m, đường nội bộ 8m, hạ tầng điện nước hoàn chỉnh, xây dựng tự do."
+T011,Căn hộ cao cấp trung tâm 2 phòng ngủ,can_ho,Quận 1,TP.HCM,9.8,85,2,2,Sổ hồng,Thiên Phú Tower,2026-09-28,"Tầng 30, view trung tâm, nội thất nhập khẩu, hồ bơi vô cực, phí quản lý cao."
+T012,Căn hộ 1 phòng ngủ trung tâm cho chuyên gia thuê,can_ho,Quận 1,TP.HCM,5.6,52,1,1,Sổ hồng,Thiên Phú Tower,2026-10-05,"Tầng 17, đang cho thuê 28 triệu/tháng, hợp đồng thuê còn 8 tháng."
