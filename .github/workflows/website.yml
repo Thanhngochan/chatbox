@@ -31,6 +31,7 @@ jobs:
           cache: npm
           cache-dependency-path: website/package-lock.json
       - run: npm ci
+      - run: npm run lint
       # Address of the deployed chat server, set in Settings > Secrets and variables > Actions > Variables
       - run: npm run build
         env:

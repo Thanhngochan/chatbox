@@ -111,7 +111,8 @@ p { margin: 0 0 12px; }
 .badges { list-style: none; padding: 0; margin: 20px 0 0; display: flex; flex-wrap: wrap; gap: 10px; }
 .badges li { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: .9rem; }
 @media (min-width: 640px) { .about { grid-template-columns: 220px 1fr; } .about__portrait { width: 220px; } }
-@media (min-width: 1024px) { .about { grid-template-columns: 320px 1fr; gap: 64px; } .about__portrait { width: 320px; } }
+@media (min-width: 1024px) { .about { grid-template-columns: 260px 1fr; gap: 56px; } .about__portrait { width: 260px; } }
+@media (min-width: 1280px) { .about { grid-template-columns: 320px 1fr; gap: 64px; } .about__portrait { width: 320px; } }
 
 /* Process */
 .steps { list-style: none; padding: 0; margin: 32px 0 0; display: grid; gap: 20px; }

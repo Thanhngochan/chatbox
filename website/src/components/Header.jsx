@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { profile } from "../config.js";
 import { MenuIcon, CloseIcon } from "./Icons.jsx";
 
@@ -11,6 +11,20 @@ const links = [
 
 export default function Header() {
   const [open, setOpen] = useState(false);
+
+  // Close the phone/tablet menu with Escape, or when the window grows to laptop width
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => e.key === "Escape" && setOpen(false);
+    const wide = window.matchMedia("(min-width: 1024px)");
+    const onWide = () => wide.matches && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    wide.addEventListener("change", onWide);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      wide.removeEventListener("change", onWide);
+    };
+  }, [open]);
   return (
     <header className="header">
       <div className="container header__inner">
@@ -22,11 +36,12 @@ export default function Header() {
           className="header__toggle"
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
+          aria-controls="site-nav"
           onClick={() => setOpen(!open)}
         >
           {open ? <CloseIcon /> : <MenuIcon />}
         </button>
-        <nav className={"nav" + (open ? " nav--open" : "")}>
+        <nav id="site-nav" className={"nav" + (open ? " nav--open" : "")}>
           {links.map(([href, label]) => (
             <a key={href} href={href} onClick={() => setOpen(false)}>{label}</a>
           ))}

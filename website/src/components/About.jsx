@@ -10,7 +10,7 @@ export default function About() {
         </div>
         <div>
           <p className="eyebrow">About</p>
-          <h2>Hi, I'm {profile.name}</h2>
+          <h2>Hi, I’m {profile.name}</h2>
           <p>
             I help families, investors and businesses make confident decisions about property and the
             logistics that come with it. Selling a home, finding the right rental or planning a move,

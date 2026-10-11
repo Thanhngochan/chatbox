@@ -10,11 +10,14 @@ function CopyButton({ value }) {
     <button
       type="button"
       className="btn btn--small btn--ghost"
-      onClick={() => {
-        navigator.clipboard?.writeText(value).then(() => {
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value);
           setDone(true);
           setTimeout(() => setDone(false), 1500);
-        });
+        } catch {
+          window.prompt("Copy the WeChat ID:", value); // clipboard blocked (e.g. non-HTTPS page)
+        }
       }}
     >
       {done ? "Copied" : "Copy ID"}
@@ -28,7 +31,7 @@ export default function Contact() {
     <section className="section section--dark" id="contact">
       <div className="container">
         <p className="eyebrow">Contact</p>
-        <h2>Let's talk about your next move</h2>
+        <h2>Let’s talk about your next move</h2>
         <p className="lead">Reach Megan directly on the channel you prefer.</p>
         <div className="grid grid--3">
           <div className="contact">

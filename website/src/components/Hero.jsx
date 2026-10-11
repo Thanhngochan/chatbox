@@ -1,5 +1,5 @@
 import { profile } from "../config.js";
-import { openChat } from "./ChatWidget.jsx";
+import { openChat } from "../chat.js";
 
 export default function Hero() {
   return (

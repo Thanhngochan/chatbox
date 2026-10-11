@@ -7,6 +7,21 @@ The chat box from this repository (`../widget/property-chat.js`) floats in the b
 No Figma file was provided, so the design was made directly in React. If a Figma design arrives later,
 the sections in `src/components/` map one-to-one to page sections and can be restyled in `src/styles.css`.
 
+## Project structure
+
+```
+website/
+  index.html            Page shell
+  public/               Static files (favicon; add Megan's photo and WeChat QR here)
+  src/
+    main.jsx            Entry point
+    App.jsx             Page layout: which sections appear, in order
+    config.js           Megan's name, contacts and the chat server address
+    chat.js             openChat() used by buttons
+    styles.css          All styles; breakpoints at 640, 768, 1024 and 1280px
+    components/         One file per section (Header, Hero, Services, About, Process, Contact, Footer, ChatWidget)
+```
+
 ## Fill in Megan's details
 
 Edit `src/config.js`: `email`, `whatsapp` (full international number, e.g. `+62 812 3456 7890`), `wechat` (WeChat ID)
@@ -19,6 +34,8 @@ A photo can replace the "MG" circle in `src/components/About.jsx`.
 cd website
 npm install
 npm run dev                                         # site only, no chat box
+npm run lint                                        # check the code
+npm run build                                       # production files in dist/
 VITE_CHAT_SERVER=http://localhost:8000 npm run dev  # with the chat box (start the server first, see ../README.md)
 ```
 

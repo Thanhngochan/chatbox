@@ -3,11 +3,6 @@ import { chatServer, profile } from "../config.js";
 
 // Loads the chat box from ../widget/property-chat.js, served by the chat server at /widget.js.
 // The widget draws itself in a Shadow DOM, so it never clashes with this site's CSS.
-export function openChat() {
-  if (window.PropertyChat) window.PropertyChat.open();
-  else document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
-}
-
 export default function ChatWidget() {
   useEffect(() => {
     if (!chatServer || document.getElementById("property-chat-script")) return;
